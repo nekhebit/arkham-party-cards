@@ -8,6 +8,10 @@ No build step, no dependencies. It's one `index.html` file that calls the
 [ArkhamDB public API](https://arkhamdb.com/api/) directly from the
 browser.
 
+This is an unofficial fan tool, not affiliated with or endorsed by Fantasy
+Flight Games. Arkham Horror: The Card Game and all card data/images are ©
+Fantasy Flight Games. Deck data comes from [ArkhamDB](https://arkhamdb.com).
+
 ## Usage
 
 Open `index.html` (locally, or via GitHub Pages once deployed), paste one
