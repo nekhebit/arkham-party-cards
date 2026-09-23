@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Arkham Party Cards</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f5f2;
+    --surface: #ffffff;
+    --border: #ddd6cc;
+    --text: #23201c;
+    --text-muted: #6b6459;
+    --accent: #7a1f2b;
+    --accent-text: #ffffff;
+    --code-bg: #efe9df;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f;
+      --surface: #221e18;
+      --border: #3a352c;
+      --text: #eae4d8;
+      --text-muted: #a89f8f;
+      --accent: #c9525e;
+      --accent-text: #17140f;
+      --code-bg: #2b271f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f;
+    --surface: #221e18;
+    --border: #3a352c;
+    --text: #eae4d8;
+    --text-muted: #a89f8f;
+    --accent: #c9525e;
+    --accent-text: #17140f;
+    --code-bg: #2b271f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 24px 16px 48px;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 4px;
+  }
+  p.lede {
+    color: var(--text-muted);
+    margin: 0 0 24px;
+    line-height: 1.5;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--code-bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+  }
+  .hint {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  button {
+    appearance: none;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-text);
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 14px;
+    margin-right: 8px;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  #status {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    min-height: 1.2em;
+    white-space: pre-line;
+  }
+  #status.error { color: var(--accent); }
+
+  .deck-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .deck-list li { padding: 2px 0; }
+
+  #results { margin-top: 8px; }
+  .pack-group { margin-bottom: 18px; }
+  .pack-group h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin: 0 0 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  td { padding: 5px 0; }
+  td.qty {
+    width: 3em;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  td.name-cell { padding-left: 8px; }
+  .subname { color: var(--text-muted); font-size: 0.85em; }
+
+  [hidden] { display: none !important; }
+
+  @media (max-width: 480px) {
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Arkham Party Cards</h1>
+  <p class="lede">
+    Paste your party's Arkham Horror: The Card Game deck links from
+    <a href="https://arkhamdb.com" target="_blank" rel="noopener">ArkhamDB</a>,
+    and get a combined shopping list of how many copies of each card the
+    group needs.
+  </p>
+
+  <div class="card">
+    <label for="deckInput">Deck links (one per line)</label>
+    <textarea id="deckInput" placeholder="https://arkhamdb.com/decklist/view/47001/some-deck-name
+https://arkhamdb.com/decklist/view/53705/another-deck
+..."></textarea>
+    <div class="hint">
+      Only <strong>public decklists</strong> work
+      (<code>arkhamdb.com/decklist/view/...</code>). Private "My Decks"
+      links (<code>arkhamdb.com/deck/view/...</code>) need a login ArkhamDB
+      won't allow from another website, so those will fail &mdash; publish
+      the deck (there's a "Publish" button on the deck page) to get a link
+      that works here.
+    </div>
+    <button id="calcBtn">Calculate</button>
+    <button id="downloadBtn" class="secondary" hidden>Download .txt</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card" id="resultsCard" hidden>
+    <label>Decks included</label>
+    <ul class="deck-list" id="deckList"></ul>
+    <label style="margin-top:16px">Cards needed</label>
+    <div id="results"></div>
+  </div>
+</main>
+
+<script>
+const CARDS_API = "https://arkhamdb.com/api/public/cards/";
+const DECKLIST_API = "https://arkhamdb.com/api/public/decklist/";
+
+const deckInput = document.getElementById("deckInput");
+const calcBtn = document.getElementById("calcBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const statusEl = document.getElementById("status");
+const resultsCard = document.getElementById("resultsCard");
+const deckListEl = document.getElementById("deckList");
+const resultsEl = document.getElementById("results");
+
+let cardIndexPromise = null;
+let lastTxt = "";
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg;
+  statusEl.classList.toggle("error", !!isError);
+}
+
+function parseDeckId(ref) {
+  const match = ref.match(/(\d+)/);
+  if (!match) return null;
+  return match[1];
+}
+
+async function loadCardIndex() {
+  if (!cardIndexPromise) {
+    cardIndexPromise = fetch(CARDS_API)
+      .then(r => {
+        if (!r.ok) throw new Error("Failed to load card database (HTTP " + r.status + ")");
+        return r.json();
+      })
+      .then(cards => {
+        const index = {};
+        for (const c of cards) index[c.code] = c;
+        return index;
+      });
+  }
+  return cardIndexPromise;
+}
+
+async function loadDeck(deckId) {
+  const res = await fetch(DECKLIST_API + deckId);
+  if (!res.ok) {
+    throw new Error(
+      "HTTP " + res.status + " - is it a public decklist, not a private deck?"
+    );
+  }
+  return res.json();
+}
+
+function sortKey(cardIndex, code) {
+  const card = cardIndex[code];
+  if (!card) return ["zzz_unknown", code];
+  return [card.pack_name || "", card.name || ""];
+}
+
+async function calculate() {
+  const refs = deckInput.value
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (refs.length === 0) {
+    setStatus("Paste at least one deck link first.", true);
+    return;
+  }
+
+  calcBtn.disabled = true;
+  downloadBtn.hidden = true;
+  resultsCard.hidden = true;
+  setStatus("Loading card database...");
+
+  try {
+    const cardIndex = await loadCardIndex();
+
+    const totals = {};
+    const deckLabels = [];
+    const errors = [];
+
+    for (const ref of refs) {
+      const deckId = parseDeckId(ref);
+      if (!deckId) {
+        errors.push(`"${ref}" - no deck id found`);
+        continue;
+      }
+      setStatus(`Fetching deck ${deckId}...`);
+      try {
+        const deck = await loadDeck(deckId);
+        const investigatorName = deck.investigator_name || "Unknown investigator";
+        deckLabels.push(`${deckId} - ${investigatorName}${deck.name ? " (" + deck.name + ")" : ""}`);
+
+        if (deck.investigator_code) {
+          totals[deck.investigator_code] = (totals[deck.investigator_code] || 0) + 1;
+        }
+        for (const [code, qty] of Object.entries(deck.slots || {})) {
+          totals[code] = (totals[code] || 0) + qty;
+        }
+        for (const [code, qty] of Object.entries(deck.ignore_deck_limit_slots || {})) {
+          totals[code] = (totals[code] || 0) + qty;
+        }
+      } catch (e) {
+        errors.push(`Deck ${deckId}: ${e.message}`);
+      }
+    }
+
+    if (deckLabels.length === 0) {
+      setStatus("No decks could be loaded.\n" + errors.join("\n"), true);
+      calcBtn.disabled = false;
+      return;
+    }
+
+    renderResults(cardIndex, totals, deckLabels, refs.length);
+
+    if (errors.length) {
+      setStatus("Done, with some issues:\n" + errors.join("\n"), true);
+    } else {
+      setStatus(`Done. Combined ${deckLabels.length} deck(s).`);
+    }
+  } catch (e) {
+    setStatus("Error: " + e.message, true);
+  } finally {
+    calcBtn.disabled = false;
+  }
+}
+
+function renderResults(cardIndex, totals, deckLabels, deckCount) {
+  deckListEl.innerHTML = "";
+  for (const label of deckLabels) {
+    const li = document.createElement("li");
+    li.textContent = label;
+    deckListEl.appendChild(li);
+  }
+
+  const codes = Object.keys(totals).sort((a, b) => {
+    const ka = sortKey(cardIndex, a), kb = sortKey(cardIndex, b);
+    if (ka[0] !== kb[0]) return ka[0] < kb[0] ? -1 : 1;
+    return ka[1] < kb[1] ? -1 : ka[1] > kb[1] ? 1 : 0;
+  });
+
+  const groups = new Map();
+  const unknown = [];
+  for (const code of codes) {
+    const card = cardIndex[code];
+    if (!card) { unknown.push(code); continue; }
+    const pack = card.pack_name || "Unknown pack";
+    if (!groups.has(pack)) groups.set(pack, []);
+    groups.get(pack).push(card);
+  }
+
+  resultsEl.innerHTML = "";
+  const txtLines = [];
+  txtLines.push("Decks included:");
+  for (const label of deckLabels) txtLines.push("  - " + label);
+  txtLines.push("");
+  txtLines.push("Cards needed (total copies across all decks):");
+
+  for (const [pack, cards] of groups) {
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "pack-group";
+    const h3 = document.createElement("h3");
+    h3.textContent = pack;
+    groupDiv.appendChild(h3);
+
+    const table = document.createElement("table");
+    for (const card of cards) {
+      const qty = totals[card.code];
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="qty">${qty}x</td><td class="name-cell">${card.name}${
+        card.subname ? ` <span class="subname">(${card.subname})</span>` : ""
+      }</td>`;
+      table.appendChild(tr);
+      txtLines.push(`${qty}x ${card.name}${card.subname ? " (" + card.subname + ")" : ""} [${pack}]`);
+    }
+    groupDiv.appendChild(table);
+    resultsEl.appendChild(groupDiv);
+  }
+
+  if (unknown.length) {
+    const div = document.createElement("div");
+    div.className = "pack-group";
+    div.innerHTML = "<h3>Unrecognized codes</h3>" + unknown.map(c => `<div>${c}</div>`).join("");
+    resultsEl.appendChild(div);
+    txtLines.push("", "Unrecognized card codes (skipped):");
+    for (const c of unknown) txtLines.push("  - " + c);
+  }
+
+  lastTxt = txtLines.join("\n") + "\n";
+  resultsCard.hidden = false;
+  downloadBtn.hidden = false;
+}
+
+function downloadTxt() {
+  const blob = new Blob([lastTxt], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "cards_needed.txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+calcBtn.addEventListener("click", calculate);
+downloadBtn.addEventListener("click", downloadTxt);
+</script>
+</body>
+</html>
