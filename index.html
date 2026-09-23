@@ -157,13 +157,64 @@
   }
   td { padding: 5px 0; }
   td.qty {
-    width: 3em;
-    font-variant-numeric: tabular-nums;
-    color: var(--accent);
+    width: 3.6em;
+  }
+  .qty-pill {
+    display: inline-block;
+    min-width: 2.1em;
+    text-align: center;
+    border-radius: 6px;
+    padding: 1px 6px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85em;
   }
   td.name-cell { padding-left: 8px; }
   .subname { color: var(--text-muted); font-size: 0.85em; }
+  .class-icon {
+    width: 15px;
+    height: 15px;
+    vertical-align: -2px;
+    margin-right: 5px;
+  }
+
+  .group-toggle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 0 0 14px;
+    font-size: 0.85rem;
+  }
+  .group-toggle span.gt-label { color: var(--text-muted); }
+  .group-toggle label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+    margin: 0;
+    cursor: pointer;
+  }
+  .group-toggle input { margin: 0; }
+
+  .pack-group.class-group h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    border-bottom: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.9rem;
+  }
+  .pack-group.class-group h3 img.class-icon {
+    filter: brightness(0) invert(1);
+    width: 18px;
+    height: 18px;
+    margin-right: 0;
+  }
 
   [hidden] { display: none !important; }
 
@@ -204,6 +255,11 @@ https://arkhamdb.com/decklist/view/53705/another-deck
     <label>Decks included</label>
     <ul class="deck-list" id="deckList"></ul>
     <label style="margin-top:16px">Cards needed</label>
+    <div class="group-toggle" id="groupToggle">
+      <span class="gt-label">Group by:</span>
+      <label><input type="radio" name="groupBy" value="pack" checked> Pack</label>
+      <label><input type="radio" name="groupBy" value="class"> Class</label>
+    </div>
     <div id="results"></div>
   </div>
 </main>
@@ -211,6 +267,29 @@ https://arkhamdb.com/decklist/view/53705/another-deck
 <script>
 const CARDS_API = "https://arkhamdb.com/api/public/cards/";
 const DECKLIST_API = "https://arkhamdb.com/api/public/decklist/";
+
+// Colors and icons match arkhamdb.com's own CSS (.bg-*, .icon-*), so class
+// grouping looks like the source site.
+const FACTION_STYLE = {
+  guardian: { bg: "#2b80c5", text: "#ffffff", label: "Guardian" },
+  seeker:   { bg: "#ff8f3f", text: "#1a1a1a", label: "Seeker" },
+  rogue:    { bg: "#107116", text: "#ffffff", label: "Rogue" },
+  mystic:   { bg: "#5d5593", text: "#ffffff", label: "Mystic" },
+  survivor: { bg: "#cc3038", text: "#ffffff", label: "Survivor" },
+  neutral:  { bg: "#808080", text: "#ffffff", label: "Neutral" },
+};
+const FACTION_ICON = {
+  guardian: "https://arkhamdb.com/bundles/app/images/factions/guardian.png",
+  seeker: "https://arkhamdb.com/bundles/app/images/factions/seeker.png",
+  rogue: "https://arkhamdb.com/bundles/app/images/factions/rogue.png",
+  mystic: "https://arkhamdb.com/bundles/app/images/factions/mystic.png",
+  survivor: "https://arkhamdb.com/bundles/app/images/factions/survivor.png",
+};
+const CLASS_ORDER = ["guardian", "seeker", "rogue", "mystic", "survivor", "neutral"];
+
+function factionStyle(factionCode) {
+  return FACTION_STYLE[factionCode] || { bg: "#6b6459", text: "#ffffff", label: factionCode || "Unknown" };
+}
 
 const deckInput = document.getElementById("deckInput");
 const calcBtn = document.getElementById("calcBtn");
@@ -222,6 +301,14 @@ const resultsEl = document.getElementById("results");
 
 let cardIndexPromise = null;
 let lastTxt = "";
+let lastCardIndex = null;
+let lastTotals = null;
+let lastDeckLabels = null;
+
+function getGroupBy() {
+  const checked = document.querySelector('input[name="groupBy"]:checked');
+  return checked ? checked.value : "pack";
+}
 
 function setStatus(msg, isError) {
   statusEl.textContent = msg;
@@ -260,9 +347,14 @@ async function loadDeck(deckId) {
   return res.json();
 }
 
-function sortKey(cardIndex, code) {
+function sortKey(cardIndex, code, groupBy) {
   const card = cardIndex[code];
   if (!card) return ["zzz_unknown", code];
+  if (groupBy === "class") {
+    const idx = CLASS_ORDER.indexOf(card.faction_code);
+    const rank = idx === -1 ? CLASS_ORDER.length : idx;
+    return [rank, card.name || ""];
+  }
   return [card.pack_name || "", card.name || ""];
 }
 
@@ -321,7 +413,10 @@ async function calculate() {
       return;
     }
 
-    renderResults(cardIndex, totals, deckLabels, refs.length);
+    lastCardIndex = cardIndex;
+    lastTotals = totals;
+    lastDeckLabels = deckLabels;
+    renderResults(cardIndex, totals, deckLabels, getGroupBy());
 
     if (errors.length) {
       setStatus("Done, with some issues:\n" + errors.join("\n"), true);
@@ -335,7 +430,7 @@ async function calculate() {
   }
 }
 
-function renderResults(cardIndex, totals, deckLabels, deckCount) {
+function renderResults(cardIndex, totals, deckLabels, groupBy) {
   deckListEl.innerHTML = "";
   for (const label of deckLabels) {
     const li = document.createElement("li");
@@ -344,7 +439,7 @@ function renderResults(cardIndex, totals, deckLabels, deckCount) {
   }
 
   const codes = Object.keys(totals).sort((a, b) => {
-    const ka = sortKey(cardIndex, a), kb = sortKey(cardIndex, b);
+    const ka = sortKey(cardIndex, a, groupBy), kb = sortKey(cardIndex, b, groupBy);
     if (ka[0] !== kb[0]) return ka[0] < kb[0] ? -1 : 1;
     return ka[1] < kb[1] ? -1 : ka[1] > kb[1] ? 1 : 0;
   });
@@ -354,9 +449,11 @@ function renderResults(cardIndex, totals, deckLabels, deckCount) {
   for (const code of codes) {
     const card = cardIndex[code];
     if (!card) { unknown.push(code); continue; }
-    const pack = card.pack_name || "Unknown pack";
-    if (!groups.has(pack)) groups.set(pack, []);
-    groups.get(pack).push(card);
+    const groupLabel = groupBy === "class"
+      ? factionStyle(card.faction_code).label
+      : (card.pack_name || "Unknown pack");
+    if (!groups.has(groupLabel)) groups.set(groupLabel, []);
+    groups.get(groupLabel).push(card);
   }
 
   resultsEl.innerHTML = "";
@@ -364,24 +461,38 @@ function renderResults(cardIndex, totals, deckLabels, deckCount) {
   txtLines.push("Decks included:");
   for (const label of deckLabels) txtLines.push("  - " + label);
   txtLines.push("");
-  txtLines.push("Cards needed (total copies across all decks):");
+  txtLines.push(`Cards needed (total copies across all decks, grouped by ${groupBy}):`);
 
-  for (const [pack, cards] of groups) {
+  for (const [groupLabel, cards] of groups) {
     const groupDiv = document.createElement("div");
-    groupDiv.className = "pack-group";
+    groupDiv.className = "pack-group" + (groupBy === "class" ? " class-group" : "");
     const h3 = document.createElement("h3");
-    h3.textContent = pack;
+
+    if (groupBy === "class") {
+      const factionCode = cards[0].faction_code;
+      const style = factionStyle(factionCode);
+      h3.style.background = style.bg;
+      h3.style.color = style.text;
+      const iconUrl = FACTION_ICON[factionCode];
+      h3.innerHTML = (iconUrl ? `<img class="class-icon" src="${iconUrl}" alt="">` : "") + groupLabel;
+    } else {
+      h3.textContent = groupLabel;
+    }
     groupDiv.appendChild(h3);
 
     const table = document.createElement("table");
     for (const card of cards) {
       const qty = totals[card.code];
+      const style = factionStyle(card.faction_code);
+      const iconUrl = FACTION_ICON[card.faction_code];
+      const icon = groupBy === "pack" && iconUrl ? `<img class="class-icon" src="${iconUrl}" alt="${style.label}">` : "";
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="qty">${qty}x</td><td class="name-cell">${card.name}${
+      tr.innerHTML = `<td class="qty"><span class="qty-pill" style="background:${style.bg};color:${style.text}">${qty}×</span></td><td class="name-cell">${icon}${card.name}${
         card.subname ? ` <span class="subname">(${card.subname})</span>` : ""
       }</td>`;
       table.appendChild(tr);
-      txtLines.push(`${qty}x ${card.name}${card.subname ? " (" + card.subname + ")" : ""} [${pack}]`);
+      const label = groupBy === "class" ? card.pack_name : style.label;
+      txtLines.push(`${qty}x ${card.name}${card.subname ? " (" + card.subname + ")" : ""} [${label}]`);
     }
     groupDiv.appendChild(table);
     resultsEl.appendChild(groupDiv);
@@ -415,6 +526,11 @@ function downloadTxt() {
 
 calcBtn.addEventListener("click", calculate);
 downloadBtn.addEventListener("click", downloadTxt);
+document.getElementById("groupToggle").addEventListener("change", () => {
+  if (lastTotals) {
+    renderResults(lastCardIndex, lastTotals, lastDeckLabels, getGroupBy());
+  }
+});
 </script>
 </body>
 </html>
